@@ -48,22 +48,63 @@ double saldo(int i){ return reservas[i].total+reservas[i].multa-reservas[i].paga
 void registrarCliente(){ if(nC>=MAX_CLIENTES){cout<<"Limite de clientes alcanzado.\n";return;} Cliente c; c.id=nextC++; c.nombre=leerTexto("Nombre completo: "); c.telefono=leerTexto("Telefono: "); clientes[nC++]=c; cout<<"Cliente registrado. Codigo: "<<c.id<<"\n"; }
 void listarClientes(){ if(!nC){cout<<"No hay clientes.\n";return;} for(int i=0;i<nC;i++) cout<<clientes[i].id<<" | "<<clientes[i].nombre<<" | "<<clientes[i].telefono<<"\n"; }
 void listarEspacios(){ cout<<"\nESPACIOS\n"; for(int i=0;i<MAX_ESPACIOS;i++) cout<<espacios[i].codigo<<" - "<<espacios[i].nombre<<" | Aforo "<<espacios[i].capacidad<<" | "<<espacios[i].inicio<<":00-"<<espacios[i].fin<<":00 | Q"<<espacios[i].tarifa<<"/hora\n"; }
+bool validarHorarioYDisponibilidad(int espacio,const string& codigo,const string& fecha,int inicio,int fin){
+ if(inicio<espacios[espacio].inicio || fin>espacios[espacio].fin || inicio>=fin){cout<<"Horario fuera del rango permitido o incorrecto.\n";return false;}
+ if(!disponible(codigo,fecha,inicio,fin)){cout<<"Conflicto: el espacio ya esta reservado en ese horario.\n";return false;}
+ return true;
+}
+bool validarCapacidad(int espacio,int asistentes){
+ if(asistentes>espacios[espacio].capacidad){cout<<"Aforo excedido. Capacidad maxima: "<<espacios[espacio].capacidad<<"\n";return false;}
+ return true;
+}
+void calcularCostoReserva(int espacio,int inicio,int fin,double costoAmenidades,double& total,double& anticipo){
+ total=(fin-inicio)*espacios[espacio].tarifa+costoAmenidades;
+ anticipo=total*ANTICIPO_PORC/100.0;
+}
 void registrarReserva(){
- if(nR>=MAX_RESERVAS){cout<<"Limite de reservas alcanzado.\n";return;} if(nP>=MAX_PAGOS){cout<<"No hay espacio para registrar el pago inicial.\n";return;} if(nC==0){cout<<"Primero registre un cliente.\n";return;}
- listarClientes(); int cid=leerEntero("Codigo del cliente: ",1,1000000); if(buscarClienteId(cid)<0){cout<<"Cliente inexistente.\n";return;}
- listarEspacios(); string cod=leerTexto("Codigo del espacio: "); int e=buscarEspacio(cod); if(e<0){cout<<"Espacio inexistente.\n";return;}
- string fecha=leerTexto("Fecha del evento (DD/MM/AAAA): "); if(!fechaValida(fecha)){cout<<"Fecha invalida. Use DD/MM/AAAA y una fecha real.\n";return;} int ini=leerEntero("Hora inicio (0-23): ",0,23), fin=leerEntero("Hora fin (1-24): ",1,24);
- if(ini<espacios[e].inicio || fin>espacios[e].fin || ini>=fin){cout<<"Horario fuera del rango permitido o incorrecto.\n";return;}
- if(!disponible(cod,fecha,ini,fin)){cout<<"Conflicto: el espacio ya esta reservado en ese horario.\n";return;}
+ if(nR>=MAX_RESERVAS){cout<<"Limite de reservas alcanzado.\n";return;}
+ if(nP>=MAX_PAGOS){cout<<"No hay espacio para registrar el pago inicial.\n";return;}
+ if(nC==0){cout<<"Primero registre un cliente.\n";return;}
+
+ listarClientes();
+ int cid=leerEntero("Codigo del cliente: ",1,1000000);
+ if(buscarClienteId(cid)<0){cout<<"Cliente inexistente.\n";return;}
+
+ listarEspacios();
+ string cod=leerTexto("Codigo del espacio: ");
+ int e=buscarEspacio(cod);
+ if(e<0){cout<<"Espacio inexistente.\n";return;}
+
+ string fecha=leerTexto("Fecha del evento (DD/MM/AAAA): ");
+ if(!fechaValida(fecha)){cout<<"Fecha invalida. Use DD/MM/AAAA y una fecha real.\n";return;}
+ int ini=leerEntero("Hora inicio (0-23): ",0,23);
+ int fin=leerEntero("Hora fin (1-24): ",1,24);
+ if(!validarHorarioYDisponibilidad(e,cod,fecha,ini,fin))return;
+
  int asistentes=leerEntero("Cantidad estimada de asistentes: ",1,100000);
- if(asistentes>espacios[e].capacidad){cout<<"Aforo excedido. Capacidad maxima: "<<espacios[e].capacidad<<"\n";return;}
- string extras="Ninguna"; double extra=0; cout<<"Amenidades disponibles:\n"; for(int a=0;a<MAX_AMENIDADES;a++) cout<<a+1<<". "<<amenidadesN[a]<<" Q"<<amenidadesP[a]<<"\n";
- int op; do{op=leerEntero("Agregar amenidad (1-4) o 0 para terminar: ",0,4); if(op>0){extra+=amenidadesP[op-1]; if(extras=="Ninguna") extras=amenidadesN[op-1]; else extras+=" + "+amenidadesN[op-1];}}while(op!=0);
- double total=(fin-ini)*espacios[e].tarifa+extra, anticipo=total*ANTICIPO_PORC/100.0;
+ if(!validarCapacidad(e,asistentes))return;
+
+ string extras="Ninguna";
+ double extra=0;
+ cout<<"Amenidades disponibles:\n";
+ for(int a=0;a<MAX_AMENIDADES;a++)cout<<a+1<<". "<<amenidadesN[a]<<" Q"<<amenidadesP[a]<<"\n";
+ int op;
+ do{
+  op=leerEntero("Agregar amenidad (1-4) o 0 para terminar: ",0,4);
+  if(op>0){extra+=amenidadesP[op-1];if(extras=="Ninguna")extras=amenidadesN[op-1];else extras+=" + "+amenidadesN[op-1];}
+ }while(op!=0);
+
+ double total,anticipo;
+ calcularCostoReserva(e,ini,fin,extra,total,anticipo);
  cout<<fixed<<setprecision(2)<<"Total: Q"<<total<<" | Anticipo minimo (20%): Q"<<anticipo<<"\n";
- double pago=leerMonto("Pago inicial: Q"); if(pago<anticipo || pago>total){cout<<"Pago no valido: debe cubrir el anticipo y no superar el total. Reserva no confirmada.\n";return;}
- Reserva r; r.id=nextR++; r.clienteId=cid;r.espacio=cod;r.fecha=fecha;r.inicio=ini;r.fin=fin;r.asistentes=asistentes;r.total=total;r.pagado=pago;r.multa=0;r.amenidades=extras;r.estado="CONFIRMADA";r.estadoEvento="PENDIENTE";reservas[nR++]=r;
- if(nP<MAX_PAGOS){pagos[nP++]={r.id,hoy(),"EFECTIVO",pago};}
+ double pago=leerMonto("Pago inicial: Q");
+ if(pago<anticipo || pago>total){cout<<"Pago no valido: debe cubrir el anticipo y no superar el total. Reserva no confirmada.\n";return;}
+
+ Reserva r;
+ r.id=nextR++;r.clienteId=cid;r.espacio=cod;r.fecha=fecha;r.inicio=ini;r.fin=fin;r.asistentes=asistentes;
+ r.total=total;r.pagado=pago;r.multa=0;r.amenidades=extras;r.estado="CONFIRMADA";r.estadoEvento="PENDIENTE";
+ reservas[nR++]=r;
+ if(nP<MAX_PAGOS)pagos[nP++]={r.id,hoy(),"EFECTIVO",pago};
  cout<<"Reserva confirmada. Codigo: "<<r.id<<". Saldo: Q"<<saldo(nR-1)<<"\n";
 }
 void consultarReserva(){ int id=leerEntero("Codigo de reserva: ",1,10000000); int i=buscarReservaId(id); if(i<0){cout<<"Reserva no encontrada.\n";return;} int c=buscarClienteId(reservas[i].clienteId); cout<<fixed<<setprecision(2)<<"Reserva "<<id<<" | Cliente: "<<(c>=0?clientes[c].nombre:"-")<<" | Espacio: "<<reservas[i].espacio<<" | Fecha: "<<reservas[i].fecha<<" | "<<reservas[i].inicio<<"-"<<reservas[i].fin<<" | Asistentes: "<<reservas[i].asistentes<<" | Total Q"<<reservas[i].total<<" | Pagado Q"<<reservas[i].pagado<<" | Multa Q"<<reservas[i].multa<<" | Saldo Q"<<saldo(i)<<" | Estado "<<reservas[i].estado<<" | Evento "<<reservas[i].estadoEvento<<"\nAmenidades: "<<reservas[i].amenidades<<"\n"; }
