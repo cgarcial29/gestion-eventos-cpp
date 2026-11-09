@@ -80,7 +80,11 @@ void ordenarReservasPorFecha(){
   int dia=(fecha[0]-'0')*10+(fecha[1]-'0');
   int mes=(fecha[3]-'0')*10+(fecha[4]-'0');
   int anio=(fecha[6]-'0')*1000+(fecha[7]-'0')*100+(fecha[8]-'0')*10+(fecha[9]-'0');
-  if(mes<1 || mes>12 || dia<1 || dia>31)return 100000000LL;
+  if(anio<1 || mes<1 || mes>12)return 100000000LL;
+  int diasMes[]={31,28,31,30,31,30,31,31,30,31,30,31};
+  bool bisiesto=(anio%400==0 || (anio%4==0 && anio%100!=0));
+  if(bisiesto)diasMes[1]=29;
+  if(dia<1 || dia>diasMes[mes-1])return 100000000LL;
   return anio*10000LL+mes*100+dia;
  };
  for(int i=0;i<nR-1;i++)
