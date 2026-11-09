@@ -134,9 +134,38 @@ void ordenarReservasPorFecha(){
     Reserva t=reservas[j];reservas[j]=reservas[j+1];reservas[j+1]=t;
    }
 }
-void reporteCierre(){ string f=leerTexto("Fecha a reportar (DD/MM/AAAA): "); double ef=0,tr=0;int cant=0,pend=0,con=0,sin=0; cout<<"\nCIERRE DIARIO "<<f<<"\n"; for(int i=0;i<nP;i++)if(pagos[i].fecha==f){if(pagos[i].medio=="EFECTIVO")ef+=pagos[i].monto;else tr+=pagos[i].monto;} for(int i=0;i<nR;i++)if(reservas[i].fecha==f){cant++;if(saldo(i)>0)pend++;if(reservas[i].amenidades=="Ninguna")sin++;else con++;} cout<<fixed<<setprecision(2)<<"Reservas del dia: "<<cant<<"\nEfectivo recibido: Q"<<ef<<"\nTransferencias: Q"<<tr<<"\nReservas con saldo: "<<pend<<"\nCon amenidades: "<<con<<" | Sin amenidades: "<<sin<<"\n"; }
-void reportePorEspacio(){ cout<<"\nINGRESOS POR ESPACIO\n"; for(int e=0;e<MAX_ESPACIOS;e++){double t=0,p=0;int c=0;for(int i=0;i<nR;i++)if(reservas[i].espacio==espacios[e].codigo && reservas[i].estado!="CANCELADA"){t+=reservas[i].total;p+=reservas[i].pagado;c++;}cout<<espacios[e].nombre<<" | Reservas: "<<c<<" | Total contratado: Q"<<t<<" | Cobrado: Q"<<p<<"\n";} }
-void reporteSaldos(){ cout<<"\nSALDOS PENDIENTES\n"; int c=0;for(int i=0;i<nR;i++)if(reservas[i].estado=="CONFIRMADA" && saldo(i)>0){cout<<"Reserva "<<reservas[i].id<<" | "<<reservas[i].fecha<<" | Saldo Q"<<saldo(i)<<"\n";c++;}if(!c)cout<<"No hay saldos pendientes.\n"; }
+void calcularPagosDelDia(const string& fecha,double& efectivo,double& transferencias){
+ for(int i=0;i<nP;i++)if(pagos[i].fecha==fecha){if(pagos[i].medio=="EFECTIVO")efectivo+=pagos[i].monto;else transferencias+=pagos[i].monto;}
+}
+void contarReservasDelDia(const string& fecha,int& cantidad,int& pendientes,int& conAmenidades,int& sinAmenidades){
+ for(int i=0;i<nR;i++)if(reservas[i].fecha==fecha){cantidad++;if(saldo(i)>0)pendientes++;if(reservas[i].amenidades=="Ninguna")sinAmenidades++;else conAmenidades++;}
+}
+void reporteCierre(){
+ string f=leerTexto("Fecha a reportar (DD/MM/AAAA): ");
+ double ef=0,tr=0;int cant=0,pend=0,con=0,sin=0;
+ calcularPagosDelDia(f,ef,tr);
+ contarReservasDelDia(f,cant,pend,con,sin);
+ cout<<"\nCIERRE DIARIO "<<f<<"\n";
+ cout<<fixed<<setprecision(2)<<"Reservas del dia: "<<cant<<"\nEfectivo recibido: Q"<<ef<<"\nTransferencias: Q"<<tr<<"\nReservas con saldo: "<<pend<<"\nCon amenidades: "<<con<<" | Sin amenidades: "<<sin<<"\n";
+}
+void calcularIngresosEspacio(const string& codigo,int& cantidad,double& total,double& cobrado){
+ for(int i=0;i<nR;i++)if(reservas[i].espacio==codigo && reservas[i].estado!="CANCELADA"){total+=reservas[i].total;cobrado+=reservas[i].pagado;cantidad++;}
+}
+void reportePorEspacio(){
+ cout<<"\nINGRESOS POR ESPACIO\n";
+ for(int e=0;e<MAX_ESPACIOS;e++){double t=0,p=0;int c=0;calcularIngresosEspacio(espacios[e].codigo,c,t,p);cout<<espacios[e].nombre<<" | Reservas: "<<c<<" | Total contratado: Q"<<t<<" | Cobrado: Q"<<p<<"\n";}
+}
+int listarSaldosPendientes(int indices[],int maximo){
+ int cantidad=0;
+ for(int i=0;i<nR;i++)if(reservas[i].estado=="CONFIRMADA" && saldo(i)>0 && cantidad<maximo)indices[cantidad++]=i;
+ return cantidad;
+}
+void reporteSaldos(){
+ int indices[MAX_RESERVAS];int cantidad=listarSaldosPendientes(indices,MAX_RESERVAS);
+ cout<<"\nSALDOS PENDIENTES\n";
+ for(int j=0;j<cantidad;j++){int i=indices[j];cout<<"Reserva "<<reservas[i].id<<" | "<<reservas[i].fecha<<" | Saldo Q"<<saldo(i)<<"\n";}
+ if(!cantidad)cout<<"No hay saldos pendientes.\n";
+}
 bool separarCampos(const string& linea,string campos[],int cantidad){
  int indice=0; size_t inicio=0;
  while(true){
